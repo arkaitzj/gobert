@@ -77,6 +77,18 @@ func writeList(w io.Writer, l reflect.Value) {
 
 	writeNil(w)
 }
+func writeStruct(w io.Writer, l reflect.Value){
+    num_fields := l.NumField()
+	write1(w, SmallTupleTag)
+	write1(w, uint8(num_fields+1))
+    writeAtom(w,l.Type().Name())
+
+    for i := 0; i < num_fields; i++ {
+        valueField := l.Field(i)
+        writeTag(w,valueField)
+    }
+
+}
 
 func writeTag(w io.Writer, val reflect.Value) (err error) {
 	switch v := val; v.Kind() {
@@ -95,12 +107,24 @@ func writeTag(w io.Writer, val reflect.Value) (err error) {
 		} else {
 			writeString(w, v.String())
 		}
-	case reflect.Slice:
-		writeSmallTuple(w, v)
-	case reflect.Array:
+	case reflect.Slice, reflect.Array:
 		writeList(w, v)
 	case reflect.Interface:
 		writeTag(w, v.Elem())
+    case reflect.Struct:
+        writeStruct(w,v)
+    case reflect.Bool:
+        if v.Bool(){
+            writeAtom(w,"true")
+        }else{
+            writeAtom(w,"false")
+        }
+    case reflect.Ptr:
+        if v.Pointer() == uintptr(0){
+            writeAtom(w,"none")
+        }else{
+            writeTag(w,val.Elem())
+        }
 	default:
 		if !reflect.Indirect(val).IsValid() {
 			writeNil(w)
